@@ -163,12 +163,12 @@ class Bagel(PreTrainedModel):
         else:
             attention_mask = nested_attention_masks
 
-        if self.config.visual_und:
+        if self.config.visual_und and vit_token_seqlens is not None:
             cu_seqlens = torch.nn.functional.pad(torch.cumsum(vit_token_seqlens, dim=0), (1, 0))
             cu_seqlens = cu_seqlens.to(torch.int32)
             max_seqlen = torch.max(vit_token_seqlens).item()
             packed_vit_token_embed = self.vit_model(
-                packed_pixel_values=packed_vit_tokens, 
+                packed_pixel_values=packed_vit_tokens,
                 packed_flattened_position_ids=packed_vit_position_ids,
                 cu_seqlens=cu_seqlens,
                 max_seqlen=max_seqlen,
@@ -215,7 +215,7 @@ class Bagel(PreTrainedModel):
         )
 
         mse = None
-        if self.config.visual_gen:
+        if self.config.visual_gen and mse_loss_indexes is not None:
             packed_mse_preds = self.llm2vae(last_hidden_state[mse_loss_indexes])
             target = noise - packed_latent_clean # NOTE: v_t=dx_t/dt=x_1-x_0, pointing from data to noise
             has_mse = packed_timesteps > 0
@@ -938,9 +938,11 @@ class Bagel(PreTrainedModel):
         do_sample: bool = False,
         temperature: float = 1.0,
         end_token_id: int = None,
+        stop_token_sequences: list = None,
     ):
         step = 0
         generated_sequence = []
+        generated_ids = []
         curr_tokens = packed_start_tokens
         while step < max_length:
             generated_sequence.append(curr_tokens)
@@ -995,6 +997,17 @@ class Bagel(PreTrainedModel):
 
             if end_token_id is not None and curr_tokens[0] == end_token_id: # only support batch=1
                 break
+
+            if stop_token_sequences is not None:
+                generated_ids.append(curr_tokens[0].item())
+                stop = False
+                for seq in stop_token_sequences:
+                    if len(generated_ids) >= len(seq) and generated_ids[-len(seq):] == seq:
+                        stop = True
+                        break
+                if stop:
+                    generated_sequence.append(curr_tokens)
+                    break
 
         output_device = generated_sequence[0].device
         return torch.stack([i.to(output_device) for i in generated_sequence], dim=0)

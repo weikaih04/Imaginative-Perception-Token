@@ -1,0 +1,21 @@
+# Multi-View Counting Text CoT Training Configuration (8 GPU)
+# Dataset: mvc_textcot (frame-by-frame reasoning, no image generation)
+# Pure text reasoning - no output images, only text output with detailed CoT
+# Total samples: ~17079 (TODO: update after running create_mvc_cot_datasets.py)
+
+unified_edit:
+  dataset_names:
+  - mvc_textcot
+  enable_vae: False
+  image_transform_args:
+    image_stride: 16
+    max_image_size: 1024
+    min_image_size: 512
+  vit_image_transform_args:
+    image_stride: 14
+    max_image_size: 518
+    min_image_size: 224
+  is_mandatory: True
+  num_used_data:
+  - 16808
+  weight: 1

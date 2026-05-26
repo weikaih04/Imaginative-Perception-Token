@@ -1,6 +1,7 @@
 # Copyright 2025 Bytedance Ltd. and/or its affiliates.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import pyarrow.parquet as pq
 
 from ..distributed_iterable_dataset import DistributedIterableDataset
@@ -33,39 +34,42 @@ class InterleavedBaseIterableDataset(DistributedIterableDataset):
         )
         return data
 
-    def _add_image(self, data, image, need_loss, need_vae, need_vit, enable_cfg=True):
+    def _add_image(self, data, image, need_loss, need_vae, need_vit, enable_cfg=True, is_output=False):
         assert need_loss or need_vae or need_vit
+
+        # Use output_transform for output images if available, otherwise use transform
+        vae_transform = self.output_transform if (is_output and hasattr(self, 'output_transform')) else self.transform
 
         if need_loss:
             data['sequence_plan'].append(
                 {
-                    'type': 'vae_image', 
-                    'enable_cfg': 0, 
-                    'loss': 1, 
+                    'type': 'vae_image',
+                    'enable_cfg': 0,
+                    'loss': 1,
                     'special_token_loss': 0,
                     'special_token_label': None,
                 }
             )
 
-            image_tensor = self.transform(image)
+            image_tensor = vae_transform(image)
             height, width = image_tensor.shape[1:]
-            data['num_tokens'] += width * height // self.transform.stride ** 2
+            data['num_tokens'] += width * height // vae_transform.stride ** 2
             data['image_tensor_list'].append(image_tensor)
 
         if need_vae:
             data['sequence_plan'].append(
                 {
-                    'type': 'vae_image', 
-                    'enable_cfg': int(enable_cfg), 
-                    'loss': 0, 
+                    'type': 'vae_image',
+                    'enable_cfg': int(enable_cfg),
+                    'loss': 0,
                     'special_token_loss': 0,
                     'special_token_label': None,
                 }
             )
 
-            image_tensor = self.transform(image)
+            image_tensor = vae_transform(image)
             height, width = image_tensor.shape[1:]
-            data['num_tokens'] += width * height // self.transform.stride ** 2
+            data['num_tokens'] += width * height // vae_transform.stride ** 2
             data['image_tensor_list'].append(image_tensor.clone())
 
         if need_vit:
@@ -132,18 +136,21 @@ class InterleavedBaseIterableDataset(DistributedIterableDataset):
 class ParquetStandardIterableDataset(DistributedIterableDataset):
 
     def __init__(
-        self, dataset_name, transform, tokenizer, vit_transform, 
+        self, dataset_name, transform, tokenizer, vit_transform,
         data_dir_list, num_used_data, parquet_info,
         local_rank=0, world_size=1, num_workers=8, data_status=None,
+        output_transform=None,
     ):
         """
         data_dir_list: list of data directories contains parquet files
         num_used_data: list of number of sampled data paths for each data directory
         vit_transform: input transform for vit model.
+        output_transform: transform for output/generated images (optional, defaults to transform)
         """
         super().__init__(dataset_name, local_rank, world_size, num_workers)
         self.transform = transform
         self.vit_transform = vit_transform
+        self.output_transform = output_transform if output_transform is not None else transform
         self.tokenizer = tokenizer
         self.data_status = data_status
         self.data_paths = self.get_data_paths(data_dir_list, num_used_data, parquet_info)
@@ -154,8 +161,12 @@ class ParquetStandardIterableDataset(DistributedIterableDataset):
         for data_dir, num_data_path in zip(data_dir_list, num_used_data):
             data_paths = get_parquet_data_paths([data_dir], [num_data_path])
             for data_path in data_paths:
-                if data_path in parquet_info.keys():
-                    num_row_groups = parquet_info[data_path]['num_row_groups']
+                # Try full path first, then just filename for compatibility
+                parquet_key = data_path
+                if data_path not in parquet_info.keys():
+                    parquet_key = os.path.basename(data_path)
+                if parquet_key in parquet_info.keys():
+                    num_row_groups = parquet_info[parquet_key]['num_row_groups']
                     for rg_idx in range(num_row_groups):
                         row_groups.append((data_path, rg_idx))
         return row_groups

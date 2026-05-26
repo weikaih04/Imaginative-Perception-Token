@@ -193,6 +193,11 @@ class InterleaveInferencer:
         kv_lens = gen_context['kv_lens']
         ropes = gen_context['ropes']
 
+        # Stop on '</answer' prefix [522, 9217] since BPE merges '>' with next char
+        # (e.g. '>B' -> token 36721), making full '</answer>' [522,9217,29] unmatchable mid-repetition
+        answer_ids = self.tokenizer.encode('</answer>')
+        stop_token_sequences = [answer_ids[:2]]  # ['</', 'answer'] is stable regardless of context
+
         generation_input = self.model.prepare_start_tokens(kv_lens, ropes, self.new_token_ids)
         unpacked_latent = self.model.generate_text(
             past_key_values=past_key_values,
@@ -200,10 +205,18 @@ class InterleaveInferencer:
             do_sample=do_sample,
             temperature=temperature,
             end_token_id=self.new_token_ids['eos_token_id'],
+            stop_token_sequences=stop_token_sequences,
             **generation_input,
         )
         output = self.tokenizer.decode(unpacked_latent[:,0])
         output = output.split('<|im_end|>')[0].split('<|im_start|>')[1]
+        # Truncate at first </answer> (or incomplete </answer due to early stop)
+        for stop_str in ['</answer>', '</answer']:
+            if stop_str in output:
+                output = output[:output.index(stop_str) + len(stop_str)]
+                if not output.endswith('>'):
+                    output += '>'
+                break
         return output
         
     @torch.no_grad()
@@ -234,13 +247,13 @@ class InterleaveInferencer:
         cfg_img_context = deepcopy(gen_context)
 
         with torch.autocast(device_type="cuda", enabled=True, dtype=torch.bfloat16):
-            if think:
-                if understanding_output:
-                    system_prompt = VLM_THINK_SYSTEM_PROMPT 
-                else:
-                    system_prompt = GEN_THINK_SYSTEM_PROMPT
-                gen_context = self.update_context_text(system_prompt, gen_context)
-                cfg_img_context = self.update_context_text(system_prompt, cfg_img_context)
+            # Always add system prompt - all models are trained with it
+            if understanding_output:
+                system_prompt = VLM_THINK_SYSTEM_PROMPT
+            else:
+                system_prompt = GEN_THINK_SYSTEM_PROMPT
+            gen_context = self.update_context_text(system_prompt, gen_context)
+            cfg_img_context = self.update_context_text(system_prompt, cfg_img_context)
 
             for input_term in input_lists:
                 if isinstance(input_term, str):

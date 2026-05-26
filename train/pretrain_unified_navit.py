@@ -224,7 +224,7 @@ class TrainingArguments:
         metadata={"help": "Print / log every N training steps."}
     )
     save_every: int = field(
-        default=2000,
+        default=380,
         metadata={"help": "Save a checkpoint every N training steps."}
     )
     total_steps: int = field(
@@ -359,9 +359,9 @@ def main():
             resume=training_args.wandb_resume,
             mode="offline" if training_args.wandb_offline else "online"
         )
-        wandb.config.update(training_args)
-        wandb.config.update(model_args)
-        wandb.config.update(data_args)
+        wandb.config.update(training_args, allow_val_change=True)
+        wandb.config.update(model_args, allow_val_change=True)
+        wandb.config.update(data_args, allow_val_change=True)
     else:
         logger = create_logger(None, dist.get_rank())
     dist.barrier()
@@ -480,11 +480,31 @@ def main():
         num_shard=training_args.num_shard,
     )
     ema_model = deepcopy(model)
-    model, ema_model = FSDPCheckpoint.try_load_ckpt(
-        resume_from, logger, model, ema_model, resume_from_ema=finetune_from_ema
-    )
-    ema_model = fsdp_ema_setup(ema_model, fsdp_config)
-    fsdp_model = fsdp_wrapper(model, fsdp_config)
+
+    # Detect checkpoint format for load order decision
+    # Sharded format requires FSDP wrapping before loading (for cpu_offload compatibility)
+    is_sharded_checkpoint = False
+    if resume_from is not None and os.path.exists(resume_from):
+        model_dir = os.path.join(resume_from, "model")
+        is_sharded_checkpoint = os.path.isdir(model_dir)
+
+    if is_sharded_checkpoint:
+        # New sharded format: wrap FSDP first, then load
+        # This is required when cpu_offload=True to avoid pin_memory errors
+        logger.info(f"Detected sharded checkpoint format, wrapping FSDP before loading.")
+        ema_model = fsdp_ema_setup(ema_model, fsdp_config)
+        fsdp_model = fsdp_wrapper(model, fsdp_config)
+        fsdp_model, ema_model = FSDPCheckpoint.try_load_fsdp_ckpt(
+            resume_from, logger, fsdp_model, ema_model, resume_from_ema=finetune_from_ema
+        )
+    else:
+        # Old format (HuggingFace or safetensors): load first, then wrap FSDP
+        model, ema_model = FSDPCheckpoint.try_load_ckpt(
+            resume_from, logger, model, ema_model, resume_from_ema=finetune_from_ema
+        )
+        ema_model = fsdp_ema_setup(ema_model, fsdp_config)
+        fsdp_model = fsdp_wrapper(model, fsdp_config)
+
     apply_activation_checkpointing(
         fsdp_model, 
         checkpoint_wrapper_fn=functools.partial(
@@ -525,8 +545,8 @@ def main():
         train_step = 0
         data_status = None
     else:
-        optimizer, scheduler, train_step, data_status = FSDPCheckpoint.try_load_train_state(
-            resume_from, optimizer, scheduler, fsdp_config, 
+        optimizer, scheduler, train_step, data_status = FSDPCheckpoint.try_load_fsdp_train_state(
+            resume_from, optimizer, scheduler, fsdp_config,
         )
 
     # Setup packed dataloader
@@ -577,6 +597,10 @@ def main():
     ema_model.eval()
 
     # train loop
+    # Clear CUDA cache before training to release memory from checkpoint loading
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+
     start_time = time()
     logger.info(f"Training for {training_args.total_steps} steps, starting at {train_step}...")
     for curr_step, data in enumerate(train_loader, start=train_step):
@@ -612,9 +636,12 @@ def main():
             mse = loss_dict["mse"]
             total_mse_tokens = torch.tensor(len(data['mse_loss_indexes']), device=device)
             dist.all_reduce(total_mse_tokens, op=dist.ReduceOp.SUM)
-            mse = mse.mean(dim=-1).sum() * dist.get_world_size() / total_mse_tokens
-            loss_dict["mse"] = mse.detach()
-            loss = loss + mse * training_args.mse_weight
+            if total_mse_tokens > 0 and mse is not None and mse.numel() > 0:
+                mse = mse.mean(dim=-1).sum() * dist.get_world_size() / total_mse_tokens
+                loss_dict["mse"] = mse.detach()
+                loss = loss + mse * training_args.mse_weight
+            else:
+                loss_dict["mse"] = torch.tensor(0.0, device=device)
         else:
             assert not training_args.visual_gen
             loss_dict["mse"] = torch.tensor(0, device=device)
@@ -673,23 +700,31 @@ def main():
             data_status[item['dataset_name']][item['worker_id']] = item['data_indexes']
 
         if curr_step > 0 and curr_step % training_args.save_every == 0:
-            if dist.get_rank() == 0:
-                gather_list = [None] * dist.get_world_size()
-            else:
-                gather_list = None
-            dist.gather_object(data_status, gather_list, dst=0)
+            try:
+                # Use sharded checkpoint saving to avoid OOM
+                # Each rank saves its own data_status, no need to gather
+                # Reference: https://github.com/ByteDance-Seed/Bagel/issues/139
+                FSDPCheckpoint.fsdp_save_fsdp_ckpt(
+                    ckpt_dir=training_args.checkpoint_dir,
+                    train_steps=curr_step,
+                    model=fsdp_model,
+                    ema_model=ema_model,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
+                    logger=logger,
+                    fsdp_config=fsdp_config,
+                    data_status=data_status,
+                )
+            except Exception as e:
+                logger.error(f"Checkpoint save failed at step {curr_step}, continuing training: {e}")
+                # Continue training even if save fails - will retry at next save interval
 
-            FSDPCheckpoint.fsdp_save_ckpt(
-                ckpt_dir=training_args.checkpoint_dir, 
-                train_steps=curr_step, 
-                model=fsdp_model, 
-                ema_model=ema_model, 
-                optimizer=optimizer, 
-                scheduler=scheduler, 
-                logger=logger,
-                fsdp_config=fsdp_config,
-                data_status=gather_list
-            )
+            # Clear CUDA cache after checkpoint save to reduce memory fragmentation
+            torch.cuda.empty_cache()
+
+        # Periodically clear CUDA cache to reduce memory fragmentation (every 100 steps)
+        if curr_step > 0 and curr_step % 100 == 0:
+            torch.cuda.empty_cache()
 
     logger.info("Done!")
     if dist.get_rank() == 0:
