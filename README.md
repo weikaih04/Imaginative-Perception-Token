@@ -16,10 +16,34 @@ This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorp
   <a href="https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-datasets-6a15f80e0fcef43bd0c50aba">
     <img src="https://img.shields.io/badge/IPT-Datasets-yellow?logo=huggingface&logoColor=yellow" alt="IPT Datasets"/>
   </a>
-  <a href="https://github.com/hychaochao/VLMEvalKit_Thinkmorph">
+  <a href="https://github.com/weikaih04/SpatialReasoning_Eval">
     <img src="https://img.shields.io/badge/IPT-Eval-purple?logo=eval&logoColor=black" alt="IPT Eval"/>
   </a>
 </p>
+
+---
+
+## 📦 Datasets at a glance
+
+All datasets live in one [🤗 collection](https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-datasets-6a15f80e0fcef43bd0c50aba). Each task ships three training variants and its own eval sets:
+
+```
+Spatial Imaginative Token  (🤗 weikaih/spatial-imaginative-token-mvc-pet-datasets)
+│
+├── MVC · Multiview Counting
+│   ├── train ─ mvc-ipt · mvc-answeronly · mvc-textcot
+│   └── eval  ─ multiview_eval (AI2-THOR HV) · messytable · scannet_counting
+│
+├── PET · Perspective Taking
+│   ├── train ─ pet-ipt · pet-answeronly · pet-textcot
+│   └── eval  ─ pet-eval-ai2thor · habitat_perspective_eval (HV) · vlmevalkit_tsv (SAT)
+│
+└── PT · Path Tracing
+    ├── train ─ pt-ipt · pt-answeronly · pt-textcot
+    └── eval  ─ pt-eval-ai2thor · pt-eval-real
+```
+
+**Training variants** — `ipt`: Imaginative Perception Tokens (Visual CoT, generates intermediate images); `textcot`: text-only chain-of-thought; `answeronly`: direct-answer data, serves both the label-only baseline and the answer-only half of Mixed training.
 
 ---
 
@@ -65,12 +89,12 @@ VAE is automatically enabled for IPT / Mixed variants (which generate intermedia
 
 ### 4. Evaluate
 
-Benchmarks are supported by [VLMEvalKit_Thinkmorph](https://github.com/hychaochao/VLMEvalKit_Thinkmorph):
+Benchmarks are supported by our eval repo [SpatialReasoning_Eval](https://github.com/weikaih04/SpatialReasoning_Eval):
 
-- **In-domain (AI2-THOR)**: `AI2ThorMultiViewCounting_HumanVerified`, `AI2ThorPerspective_NoArrow`
-- **Different environment**: `HabitatPerspective_NoArrow_HumanVerified`
-- **OOD (similar tasks)**: `SAT_perspective`, `MessyTableCounting_200`, `ScanNetCounting_200`
-- **OOD (other spatial)**: `MindCube_Tiny_200`, `AllAnglesBench_EgoHumans`
+- **In-domain (AI2-THOR)**: `MVC_AI2Thor_SpatialImaginativeToken`, `PET_AI2Thor_SpatialImaginativeToken`
+- **Different environment**: `PET_Habitat_SpatialImaginativeToken`
+- **OOD (similar tasks)**: `PET_SAT_SpatialImaginativeToken`, `MVC_MessyTable_SpatialImaginativeToken`, `MVC_ScanNet_SpatialImaginativeToken`
+- **OOD (other spatial)**: `MindCube_SpatialImaginativeToken`, `AllAngles_SpatialImaginativeToken`
 
 All linked in the [HuggingFace collection](https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-datasets-6a15f80e0fcef43bd0c50aba).
 
