@@ -1,8 +1,12 @@
-# 🌌 Imaginative Perception Token
+# Imaginative Perception Token
 
 ## Imaginative Perception Tokens (IPT) for Spatial Reasoning
 
 > *We train a unified VLM to generate **Imaginative Perception Tokens** — intermediate visual representations of what the model would perceive under an unseen spatial configuration — and show that imagination supervision consistently beats text-based chain-of-thought, even when no image is generated at inference.*
+
+<p align="center">
+  <img src="assets/overview.png" width="90%" alt="Imaginative Perception Token — tasks and data overview"/>
+</p>
 
 This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorph) codebase with training and evaluation for three spatial imagination tasks:
 
@@ -23,12 +27,12 @@ This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorp
 
 ---
 
-## 📦 Datasets at a glance
+## Datasets at a glance
 
-All datasets live in one [🤗 collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba). Each task ships three training variants and its own eval sets:
+All datasets live in one [collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba). Each task ships three training variants and its own eval sets:
 
 ```
-Imaginative Perception Token  (🤗 weikaih/imaginative-perception-token-mvc-pet-pt-datasets)
+Imaginative Perception Token  (weikaih/imaginative-perception-token-mvc-pet-pt-datasets)
 │
 ├── MVC · Multiview Counting
 │   ├── train ─ mvc-ipt · mvc-answeronly · mvc-textcot
@@ -47,7 +51,7 @@ Imaginative Perception Token  (🤗 weikaih/imaginative-perception-token-mvc-pet
 
 ---
 
-## 🚀 Quick Start (IPT training)
+## Quick Start (IPT training)
 
 ### 1. Environment
 
@@ -61,7 +65,7 @@ pip install -r requirements.txt
 
 ### 2. Download datasets
 
-All 8 paper training datasets (≈30 GB after JPEG optimization) are available in a single [🤗 HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba):
+All 8 paper training datasets (≈30 GB after JPEG optimization) are available in a single [HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba):
 
 ```bash
 python scripts/download_spatial_datasets.py              # all 8 datasets (MVC + PET)
@@ -100,7 +104,7 @@ All linked in the [HuggingFace collection](https://huggingface.co/collections/we
 
 ---
 
-## 📈 Headline Results
+## Headline Results
 
 | Method | MVC (AI2-THOR) | PET (AI2-THOR) | PET (Habitat) |
 |---|:---:|:---:|:---:|
@@ -115,7 +119,7 @@ IPT models are evaluated in *answer-only* mode — no image is generated at infe
 ---
 
 <details>
-<summary><b>📚 Built on ThinkMorph (click to expand)</b></summary>
+<summary><b> Built on ThinkMorph (click to expand)</b></summary>
 
 This repository is forked from [ThinkMorph](https://github.com/ThinkMorph/ThinkMorph). The original training infrastructure for interleaved text–image reasoning is preserved below.
 
@@ -157,7 +161,7 @@ Evaluation is in [VLMEvalKit_Thinkmorph](https://github.com/hychaochao/VLMEvalKi
 
 ---
 
-## ✍️ Citation
+## Citation
 
 ```bibtex
 @article{gu2025thinkmorph,
