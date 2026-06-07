@@ -121,46 +121,18 @@ IPT models are evaluated in *answer-only* mode — no image is generated at infe
 
 ---
 
-<details>
-<summary><b> Built on ThinkMorph (click to expand)</b></summary>
+## Qualitative Visualizations
 
-This repository is forked from [ThinkMorph](https://github.com/ThinkMorph/ThinkMorph). The original training infrastructure for interleaved text–image reasoning is preserved below.
+Imaginative Perception Tokens generated during reasoning — the model imagines what it would perceive under the queried spatial configuration before answering.
 
-<p align="center">
-  <a href="https://thinkmorph.github.io/"><img src="https://img.shields.io/badge/ThinkMorph-Website-0A66C2?logo=safari&logoColor=white" alt="ThinkMorph Website"/></a>
-  <a href="https://arxiv.org/abs/2510.27492"><img src="https://img.shields.io/badge/ThinkMorph-Paper-red?logo=arxiv&logoColor=red" alt="ThinkMorph Paper on arXiv"/></a>
-  <a href="https://huggingface.co/ThinkMorph/ThinkMorph-7B"><img src="https://img.shields.io/badge/ThinkMorph-Model-yellow?logo=huggingface&logoColor=yellow" alt="ThinkMorph Model"/></a>
-  <a href="https://huggingface.co/ThinkMorph"><img src="https://img.shields.io/badge/ThinkMorph-Dataset-yellow?logo=huggingface&logoColor=yellow" alt="ThinkMorph Dataset"/></a>
-</p>
+**Perspective Taking (PET)**
+<p align="center"><img src="assets/pet_visualization.png" width="90%" alt="PET qualitative visualization"/></p>
 
-### ThinkMorph training data preparation
+**Multiview Counting (MVC)**
+<p align="center"><img src="assets/mvc_visualization.png" width="90%" alt="MVC qualitative visualization"/></p>
 
-Original ThinkMorph trains on four interleaved-reasoning tasks: **Jigsaw Assembly**, **Spatial Navigation**, **Visual Search**, and **Chart Refocus** — all hosted at [huggingface.co/ThinkMorph](https://huggingface.co/ThinkMorph).
-
-```python
-from datasets import load_dataset
-dataset = load_dataset("ThinkMorph/Jigsaw_Assembly", split="train")
-dataset = load_dataset("ThinkMorph/Spatial_Navigation", split="train")
-dataset = load_dataset("ThinkMorph/Visual_Search", split="train")
-dataset = load_dataset("ThinkMorph/Chart_Refocus", split="train")
-```
-
-Edit `data/dataset_info.py` with your own data paths, edit `data/configs/example.yaml`, then launch the relevant `scripts/train_*.sh`. Example configs for the three ThinkMorph settings (`interleaved_reasoning`, `text_reasoning`, `thinkmorph`) live in `data/configs/`.
-
-### ThinkMorph evaluation
-
-Evaluation is in [VLMEvalKit_Thinkmorph](https://github.com/hychaochao/VLMEvalKit_Thinkmorph), supporting VSP, VisPuzzle, ChartQA, VStar, BLINK-J, MMVP, SAT, BLINK, and CV-Bench.
-
-### ThinkMorph benchmarks
-
-| Model | Size | VSP | VisPuzzle | ChartQA | VStar | BLINK-J | MMVP | SAT | BLINK | CV-Bench |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| GPT-4o | – | 33.50 | 43.75 | 76.34 | 61.78 | 72.67 | 84.67 | 28.00 | 60.28 | 75.61 |
-| GPT-5 | – | 57.33 | 78.00 | 80.85 | 71.73 | 77.33 | 86.33 | 73.30 | 69.86 | 85.46 |
-| Bagel | 7B | 0.83 | 35.00 | 61.82 | 55.49 | 67.33 | 70.33 | 44.67 | 47.66 | 76.03 |
-| **ThinkMorph** | **7B** | **75.83** | **79.00** | 78.10 | 67.02 | 72.00 | 80.33 | 52.67 | 60.07 | 80.82 |
-
-</details>
+**Path Tracing (PT)**
+<p align="center"><img src="assets/pt_visualization.png" width="90%" alt="PT qualitative visualization"/></p>
 
 ---
 
