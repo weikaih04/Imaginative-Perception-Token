@@ -98,8 +98,8 @@ VAE is automatically enabled for IPT / Mixed variants (which generate intermedia
 
 Benchmarks are supported by our eval repo [SpatialReasoning_Eval](https://github.com/weikaih04/Imaginative-Perception-Token-Eval):
 
-- **In-domain (AI2-THOR)**: `MVC_AI2Thor_ImaginativePerceptionToken`, `PET_AI2Thor_ImaginativePerceptionToken`
-- **Different environment**: `PET_Habitat_ImaginativePerceptionToken`
+- **In-domain (AI2-THOR, human-verified)**: `MVC_AI2Thor_ImaginativePerceptionToken`, `PET_AI2Thor_ImaginativePerceptionToken`
+- **Different environment (human-verified)**: `PET_Habitat_ImaginativePerceptionToken`
 - **OOD (similar tasks)**: `PET_SAT_ImaginativePerceptionToken`, `MVC_MessyTable_ImaginativePerceptionToken`, `MVC_ScanNet_ImaginativePerceptionToken`
 - **OOD (other spatial)**: `MindCube_ImaginativePerceptionToken`, `AllAngles_ImaginativePerceptionToken`
 
