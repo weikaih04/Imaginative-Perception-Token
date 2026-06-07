@@ -177,14 +177,3 @@ Evaluation is in [VLMEvalKit_Thinkmorph](https://github.com/hychaochao/VLMEvalKi
       url={https://arxiv.org/abs/2606.03988},
 }
 ```
-
-This work is built on ThinkMorph:
-
-```bibtex
-@article{gu2025thinkmorph,
-  title={ThinkMorph: Emergent Properties in Multimodal Interleaved Chain-of-Thought Reasoning},
-  author={Gu, Jiawei and Hao, Yunzhuo and Wang, Huichen Will and Li, Linjie and Shieh, Michael Qizhe and Choi, Yejin and Krishna, Ranjay and Cheng, Yu},
-  journal={arXiv preprint arXiv:2510.27492},
-  year={2025}
-}
-```
