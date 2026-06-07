@@ -17,6 +17,9 @@ This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorp
 | **Multiview Counting (MVC)** | Top-down BEV map | *"How many objects are in the scene given these views?"* |
 
 <p align="center">
+  <a href="https://arxiv.org/abs/2606.03988">
+    <img src="https://img.shields.io/badge/arXiv-2606.03988-b31b1b?logo=arxiv&logoColor=white" alt="arXiv"/>
+  </a>
   <a href="https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba">
     <img src="https://img.shields.io/badge/IPT-Datasets-yellow?logo=huggingface&logoColor=yellow" alt="IPT Datasets"/>
   </a>
@@ -162,6 +165,20 @@ Evaluation is in [VLMEvalKit_Thinkmorph](https://github.com/hychaochao/VLMEvalKi
 ---
 
 ## Citation
+
+```bibtex
+@misc{bigverdi2026imaginativeperceptiontokensenhance,
+      title={Imaginative Perception Tokens Enhance Spatial Reasoning in Multimodal Language Models},
+      author={Mahtab Bigverdi and Linjie Li and Weikai Huang and Yiming Liu and Jaemin Cho and Jieyu Zhang and Tuhin Kundu and Chris Dangjoo Kim and Zelun Luo and Linda Shapiro and Ranjay Krishna},
+      year={2026},
+      eprint={2606.03988},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2606.03988},
+}
+```
+
+This work is built on ThinkMorph:
 
 ```bibtex
 @article{gu2025thinkmorph,
