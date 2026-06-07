@@ -1,4 +1,4 @@
-# 🌌 Spatial Imaginative Token
+# 🌌 Imaginative Perception Token
 
 ## Imaginative Perception Tokens (IPT) for Spatial Reasoning
 
@@ -13,10 +13,10 @@ This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorp
 | **Multiview Counting (MVC)** | Top-down BEV map | *"How many objects are in the scene given these views?"* |
 
 <p align="center">
-  <a href="https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba">
+  <a href="https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba">
     <img src="https://img.shields.io/badge/IPT-Datasets-yellow?logo=huggingface&logoColor=yellow" alt="IPT Datasets"/>
   </a>
-  <a href="https://github.com/weikaih04/SpatialReasoning_Eval">
+  <a href="https://github.com/weikaih04/Imaginative-Perception-Token-Eval">
     <img src="https://img.shields.io/badge/IPT-Eval-purple?logo=eval&logoColor=black" alt="IPT Eval"/>
   </a>
 </p>
@@ -25,10 +25,10 @@ This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorp
 
 ## 📦 Datasets at a glance
 
-All datasets live in one [🤗 collection](https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba). Each task ships three training variants and its own eval sets:
+All datasets live in one [🤗 collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba). Each task ships three training variants and its own eval sets:
 
 ```
-Spatial Imaginative Token  (🤗 weikaih/spatial-imaginative-token-mvc-pet-pt-datasets)
+Imaginative Perception Token  (🤗 weikaih/imaginative-perception-token-mvc-pet-pt-datasets)
 │
 ├── MVC · Multiview Counting
 │   ├── train ─ mvc-ipt · mvc-answeronly · mvc-textcot
@@ -52,7 +52,7 @@ Spatial Imaginative Token  (🤗 weikaih/spatial-imaginative-token-mvc-pet-pt-da
 ### 1. Environment
 
 ```bash
-git clone https://github.com/weikaih04/Spatial-Imaginative-Token.git
+git clone https://github.com/weikaih04/Imaginative-Perception-Token.git
 cd Spatial-Imaginative-Token
 conda create -n thinkmorph python=3.10 -y
 conda activate thinkmorph
@@ -61,7 +61,7 @@ pip install -r requirements.txt
 
 ### 2. Download datasets
 
-All 8 paper training datasets (≈30 GB after JPEG optimization) are available in a single [🤗 HuggingFace collection](https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba):
+All 8 paper training datasets (≈30 GB after JPEG optimization) are available in a single [🤗 HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba):
 
 ```bash
 python scripts/download_spatial_datasets.py              # all 8 datasets (MVC + PET)
@@ -89,14 +89,14 @@ VAE is automatically enabled for IPT / Mixed variants (which generate intermedia
 
 ### 4. Evaluate
 
-Benchmarks are supported by our eval repo [SpatialReasoning_Eval](https://github.com/weikaih04/SpatialReasoning_Eval):
+Benchmarks are supported by our eval repo [SpatialReasoning_Eval](https://github.com/weikaih04/Imaginative-Perception-Token-Eval):
 
-- **In-domain (AI2-THOR)**: `MVC_AI2Thor_SpatialImaginativeToken`, `PET_AI2Thor_SpatialImaginativeToken`
-- **Different environment**: `PET_Habitat_SpatialImaginativeToken`
-- **OOD (similar tasks)**: `PET_SAT_SpatialImaginativeToken`, `MVC_MessyTable_SpatialImaginativeToken`, `MVC_ScanNet_SpatialImaginativeToken`
-- **OOD (other spatial)**: `MindCube_SpatialImaginativeToken`, `AllAngles_SpatialImaginativeToken`
+- **In-domain (AI2-THOR)**: `MVC_AI2Thor_ImaginativePerceptionToken`, `PET_AI2Thor_ImaginativePerceptionToken`
+- **Different environment**: `PET_Habitat_ImaginativePerceptionToken`
+- **OOD (similar tasks)**: `PET_SAT_ImaginativePerceptionToken`, `MVC_MessyTable_ImaginativePerceptionToken`, `MVC_ScanNet_ImaginativePerceptionToken`
+- **OOD (other spatial)**: `MindCube_ImaginativePerceptionToken`, `AllAngles_ImaginativePerceptionToken`
 
-All linked in the [HuggingFace collection](https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba).
+All linked in the [HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba).
 
 ---
 

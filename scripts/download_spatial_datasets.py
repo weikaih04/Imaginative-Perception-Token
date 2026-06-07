@@ -15,15 +15,15 @@ from huggingface_hub import snapshot_download
 # (local_name, hf_repo_id, task)
 DATASETS = [
     # MVC
-    ("multi_view_counting",       "weikaih/spatial-imaginative-token-mvc-ipt",          "mvc"),
-    ("mvc_no_thought",            "weikaih/spatial-imaginative-token-mvc-no-thought",                           "mvc"),
-    ("mvc_textcot",               "weikaih/spatial-imaginative-token-mvc-textcot",                              "mvc"),
-    ("mvc_answeronly",            "weikaih/spatial-imaginative-token-mvc-answeronly",                           "mvc"),
+    ("multi_view_counting",       "weikaih/imaginative-perception-token-mvc-ipt",          "mvc"),
+    ("mvc_no_thought",            "weikaih/imaginative-perception-token-mvc-no-thought",                           "mvc"),
+    ("mvc_textcot",               "weikaih/imaginative-perception-token-mvc-textcot",                              "mvc"),
+    ("mvc_answeronly",            "weikaih/imaginative-perception-token-mvc-answeronly",                           "mvc"),
     # PET
-    ("perspective_with_sysprompt", "weikaih/spatial-imaginative-token-pet-ipt", "pet"),
-    ("perspective_no_thought",    "weikaih/spatial-imaginative-token-pet-no-thought",                   "pet"),
-    ("perspective_textcot",       "weikaih/spatial-imaginative-token-pet-textcot",                      "pet"),
-    ("pet_answeronly",            "weikaih/spatial-imaginative-token-pet-answeronly",                           "pet"),
+    ("perspective_with_sysprompt", "weikaih/imaginative-perception-token-pet-ipt", "pet"),
+    ("perspective_no_thought",    "weikaih/imaginative-perception-token-pet-no-thought",                   "pet"),
+    ("perspective_textcot",       "weikaih/imaginative-perception-token-pet-textcot",                      "pet"),
+    ("pet_answeronly",            "weikaih/imaginative-perception-token-pet-answeronly",                           "pet"),
 ]
 
 

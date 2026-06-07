@@ -21,7 +21,7 @@ DATASET_REGISTRY = {
 # `data/training/<name>/` with `python scripts/download_spatial_datasets.py`
 # (a thin wrapper around `huggingface_hub.snapshot_download`).
 #
-# Collection: https://huggingface.co/collections/weikaih/spatial-imaginative-token-mvc-pet-datasets
+# Collection: https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-datasets
 # ============================================================================
 
 import os
@@ -55,23 +55,23 @@ DATASET_INFO = {
 		},
 
         # ====== Multi-View Counting (MVC) ======
-        # HF: weikaih/spatial-imaginative-token-mvc-ipt
+        # HF: weikaih/imaginative-perception-token-mvc-ipt
         'multi_view_counting':       _spatial_entry('multi_view_counting',       5, 17079),
-        # HF: weikaih/spatial-imaginative-token-mvc-no-thought
+        # HF: weikaih/imaginative-perception-token-mvc-no-thought
         'mvc_no_thought':            _spatial_entry('mvc_no_thought',            5, 17079),
-        # HF: weikaih/spatial-imaginative-token-mvc-textcot
+        # HF: weikaih/imaginative-perception-token-mvc-textcot
         'mvc_textcot':               _spatial_entry('mvc_textcot',               5, 16808),
-        # HF: weikaih/spatial-imaginative-token-mvc-answeronly
+        # HF: weikaih/imaginative-perception-token-mvc-answeronly
         'mvc_answeronly':            _spatial_entry('mvc_answeronly',            5, 17079),
 
         # ====== Perspective Taking (PET) ======
-        # HF: weikaih/spatial-imaginative-token-pet-ipt
+        # HF: weikaih/imaginative-perception-token-pet-ipt
         'perspective_with_sysprompt': _spatial_entry('perspective_with_sysprompt', 5, 20531),
-        # HF: weikaih/spatial-imaginative-token-pet-no-thought
+        # HF: weikaih/imaginative-perception-token-pet-no-thought
         'perspective_no_thought':    _spatial_entry('perspective_no_thought',    5, 20531),
-        # HF: weikaih/spatial-imaginative-token-pet-textcot
+        # HF: weikaih/imaginative-perception-token-pet-textcot
         'perspective_textcot':       _spatial_entry('perspective_textcot',       5, 20531),
-        # HF: weikaih/spatial-imaginative-token-pet-answeronly
+        # HF: weikaih/imaginative-perception-token-pet-answeronly
         'pet_answeronly':            _spatial_entry('pet_answeronly',            5, 20531),
     },
     'vlm_sft': {
