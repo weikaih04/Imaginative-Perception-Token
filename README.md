@@ -20,7 +20,7 @@ This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorp
   <a href="https://arxiv.org/abs/2606.03988">
     <img src="https://img.shields.io/badge/arXiv-2606.03988-b31b1b?logo=arxiv&logoColor=white" alt="arXiv"/>
   </a>
-  <a href="https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba">
+  <a href="https://huggingface.co/collections/weikaih/imaginative-perception-token-data-6a15f80e0fcef43bd0c50aba">
     <img src="https://img.shields.io/badge/IPT-Datasets-yellow?logo=huggingface&logoColor=yellow" alt="IPT Datasets"/>
   </a>
   <a href="https://github.com/weikaih04/Imaginative-Perception-Token-Eval">
@@ -32,10 +32,10 @@ This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorp
 
 ## Datasets at a glance
 
-All datasets live in one [collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba). Each task ships three training variants and its own eval sets:
+All datasets live in one [collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-data-6a15f80e0fcef43bd0c50aba). Each task ships three training variants and its own eval sets:
 
 ```
-Imaginative Perception Token  (weikaih/imaginative-perception-token-mvc-pet-pt-datasets)
+Imaginative Perception Token  (weikaih/imaginative-perception-token-data)
 │
 ├── MVC · Multiview Counting
 │   ├── train ─ mvc-ipt · mvc-answeronly · mvc-textcot
@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 ### 2. Download datasets
 
-All 8 paper training datasets (≈30 GB after JPEG optimization) are available in a single [HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba):
+All 8 paper training datasets (≈30 GB after JPEG optimization) are available in a single [HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-data-6a15f80e0fcef43bd0c50aba):
 
 ```bash
 python scripts/download_spatial_datasets.py              # all 8 datasets (MVC + PET)
@@ -103,7 +103,7 @@ Benchmarks are supported by our eval repo [SpatialReasoning_Eval](https://github
 - **OOD (similar tasks)**: `PET_SAT_ImaginativePerceptionToken`, `MVC_MessyTable_ImaginativePerceptionToken`, `MVC_ScanNet_ImaginativePerceptionToken`
 - **OOD (other spatial)**: `MindCube_ImaginativePerceptionToken`, `AllAngles_ImaginativePerceptionToken`
 
-All linked in the [HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-mvc-pet-pt-datasets-6a15f80e0fcef43bd0c50aba).
+All linked in the [HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-data-6a15f80e0fcef43bd0c50aba).
 
 ---
 
