@@ -2,7 +2,9 @@
 
 # Imaginative Perception Tokens (IPT) for Spatial Reasoning
 
-Mahtab Bigverdi* · Linjie Li* · Weikai Huang* · Yiming Liu · Jaemin Cho · Jieyu Zhang · Tuhin Kundu · Chris Dongjoo Kim · Zelun Luo · Linda Shapiro · Ranjay Krishna
+Mahtab Bigverdi<sup>1,2*</sup> · Linjie Li<sup>1*</sup> · Weikai Huang<sup>1,2*</sup> · Yiming Liu<sup>1</sup> · Jaemin Cho<sup>1,2,3</sup> · Jieyu Zhang<sup>1,2</sup> · Tuhin Kundu<sup>3</sup> · Chris Dangjoo Kim<sup>2</sup> · Zelun Luo<sup>4</sup> · Linda G. Shapiro<sup>1</sup> · Ranjay Krishna<sup>1</sup>
+
+<sup>1</sup>University of Washington · <sup>2</sup>Allen Institute for AI · <sup>3</sup>Microsoft · <sup>4</sup>OpenAI
 
 *We train a unified VLM to generate **Imaginative Perception Tokens** — intermediate visual representations of what the model would perceive under an unseen spatial configuration — and show that imagination supervision consistently beats text-based chain-of-thought, even when no image is generated at inference.*
 
