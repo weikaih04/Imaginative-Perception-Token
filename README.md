@@ -60,7 +60,7 @@ Imaginative Perception Token  (weikaih/imaginative-perception-token-data)
 
 ```bash
 git clone https://github.com/weikaih04/Imaginative-Perception-Token.git
-cd Spatial-Imaginative-Token
+cd Imaginative-Perception-Token
 conda create -n thinkmorph python=3.10 -y
 conda activate thinkmorph
 pip install -r requirements.txt
@@ -96,7 +96,7 @@ VAE is automatically enabled for IPT / Mixed variants (which generate intermedia
 
 ### 4. Evaluate
 
-Benchmarks are supported by our eval repo [SpatialReasoning_Eval](https://github.com/weikaih04/Imaginative-Perception-Token-Eval):
+Benchmarks are supported by our eval repo [Imaginative-Perception-Token-Eval](https://github.com/weikaih04/Imaginative-Perception-Token-Eval):
 
 - **In-domain (AI2-THOR, human-verified)**: `MVC_AI2Thor_ImaginativePerceptionToken`, `PET_AI2Thor_ImaginativePerceptionToken`
 - **Different environment (human-verified)**: `PET_Habitat_ImaginativePerceptionToken`
