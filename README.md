@@ -5,7 +5,9 @@
 > *We train a unified VLM to generate **Imaginative Perception Tokens** — intermediate visual representations of what the model would perceive under an unseen spatial configuration — and show that imagination supervision consistently beats text-based chain-of-thought, even when no image is generated at inference.*
 
 <p align="center">
-  <video src="assets/ipt.mp4" width="90%" autoplay loop muted playsinline controls></video>
+  <a href="assets/ipt.mp4">
+    <img src="assets/ipt.gif" width="90%" alt="Imaginative-tokens qualitative video"/>
+  </a>
 </p>
 
 <p align="center">
