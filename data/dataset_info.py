@@ -67,6 +67,8 @@ DATASET_INFO = {
         # ====== Perspective Taking (PET) ======
         # HF: weikaih/imaginative-perception-token-pet-ipt
         'perspective_with_sysprompt': _spatial_entry('perspective_with_sysprompt', 5, 20531),
+        # HF: linjieli222/spatial-imaginative-token-pt-ipt
+        'path_tracing_with_sysprompt': _spatial_entry('path_tracing_with_sysprompt', 1, 2241),
         # HF: weikaih/imaginative-perception-token-pet-no-thought
         'perspective_no_thought':    _spatial_entry('perspective_no_thought',    5, 20531),
         # HF: weikaih/imaginative-perception-token-pet-textcot

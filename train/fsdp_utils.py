@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
+import gc
 import os
+import time
+import shutil
 
 import torch
 import torch.distributed as dist
@@ -15,9 +18,12 @@ from torch.distributed.fsdp import (
     BackwardPrefetch,
     ShardingStrategy,
     FullStateDictConfig,
+    ShardedStateDictConfig,
     StateDictType,
 )
 from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
+from torch.distributed.checkpoint import FileSystemWriter, FileSystemReader
+from torch.distributed.checkpoint import save_state_dict, load_state_dict
 from safetensors.torch import load_file, save_file
 
 from modeling.bagel.modeling_utils import MLPconnector, TimestepEmbedder, PositionEmbedding
@@ -83,71 +89,482 @@ def fsdp_wrapper(original_model, fsdp_config, ignored_modules=[]):
     )
 
 
+def _save_with_retry(save_fn, filepath, max_retries=3, retry_delay=5, logger=None):
+    """Save with retry logic for handling transient I/O errors."""
+    for attempt in range(max_retries):
+        try:
+            save_fn()
+            # Verify file exists and has non-zero size
+            if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                return True
+            else:
+                raise IOError(f"File {filepath} was not written correctly")
+        except Exception as e:
+            if logger:
+                logger.warning(f"Save attempt {attempt + 1}/{max_retries} failed for {filepath}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+            else:
+                raise
+    return False
+
+
 class FSDPCheckpoint:
     @staticmethod
     def fsdp_save_ckpt(
-        ckpt_dir, 
-        train_steps, 
-        model, 
-        ema_model, 
-        optimizer, 
-        scheduler, 
+        ckpt_dir,
+        train_steps,
+        model,
+        ema_model,
+        optimizer,
+        scheduler,
         data_status,
-        logger, 
+        logger,
         fsdp_config,
     ):
         save_path = os.path.join(ckpt_dir, f"{train_steps:07d}")
-        os.makedirs(save_path, exist_ok=True)
-        logger.info(f"Saving checkpoint to {save_path}.")
+        temp_path = save_path + ".tmp"
+        rank = dist.get_rank()
 
-        if ema_model is not None:
+        try:
+            # Create temp directory
+            if rank == 0:
+                if os.path.exists(temp_path):
+                    shutil.rmtree(temp_path, ignore_errors=True)
+                os.makedirs(temp_path, exist_ok=True)
+            dist.barrier()
+
+            # Ensure temp_path is visible to all ranks
+            os.makedirs(temp_path, exist_ok=True)
+
+            logger.info(f"Saving checkpoint to {save_path} (using temp: {temp_path}).")
+
+            # Clear GPU cache before saving to free up memory for FSDP gather
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
+            # Save EMA model
+            if ema_model is not None:
+                with FSDP.state_dict_type(
+                    ema_model,
+                    StateDictType.FULL_STATE_DICT,
+                    FullStateDictConfig(rank0_only=True, offload_to_cpu=True),
+                ):
+                    ema_state_dict = ema_model.state_dict()
+                    if rank == 0:
+                        ema_path = os.path.join(temp_path, "ema.safetensors")
+                        _save_with_retry(
+                            lambda: save_file(ema_state_dict, ema_path),
+                            ema_path,
+                            logger=logger
+                        )
+                        logger.info(f"EMA model saved: {os.path.getsize(ema_path) / 1e9:.2f} GB")
+                    del ema_state_dict
+                torch.cuda.empty_cache()
+
+            # Barrier after EMA save to ensure rank 0 is done
+            dist.barrier()
+
+            # Save model
             with FSDP.state_dict_type(
-                ema_model,
+                model,
                 StateDictType.FULL_STATE_DICT,
                 FullStateDictConfig(rank0_only=True, offload_to_cpu=True),
             ):
-                ema_state_dict = ema_model.state_dict()
-                if dist.get_rank() == 0:
-                    save_file(ema_state_dict, os.path.join(save_path, "ema.safetensors"))
+                model_state_dict = model.state_dict()
+                if rank == 0:
+                    model_path = os.path.join(temp_path, "model.safetensors")
+                    _save_with_retry(
+                        lambda: save_file(model_state_dict, model_path),
+                        model_path,
+                        logger=logger
+                    )
+                    logger.info(f"Model saved: {os.path.getsize(model_path) / 1e9:.2f} GB")
+                del model_state_dict
+            torch.cuda.empty_cache()
 
-        with FSDP.state_dict_type(
-            model,
-            StateDictType.FULL_STATE_DICT,
-            FullStateDictConfig(rank0_only=True, offload_to_cpu=True),
-        ):
-            model_state_dict = model.state_dict()
-            if dist.get_rank() == 0:
-                save_file(model_state_dict, os.path.join(save_path, "model.safetensors"))
+            # Barrier after model save to ensure rank 0 is done before optimizer saving
+            dist.barrier()
 
-        with FSDP.state_dict_type(model, StateDictType.LOCAL_STATE_DICT):
-            if fsdp_config.sharding_strategy == "FULL_SHARD":
-                shard_index = dist.get_rank()
-                total_shards = dist.get_world_size()
-            elif fsdp_config.sharding_strategy == "HYBRID_SHARD":
-                shard_index = dist.get_rank() % fsdp_config.num_shard
-                total_shards = fsdp_config.num_shard
+            # Save optimizer shards
+            with FSDP.state_dict_type(model, StateDictType.LOCAL_STATE_DICT):
+                if fsdp_config.sharding_strategy == "FULL_SHARD":
+                    shard_index = rank
+                    total_shards = dist.get_world_size()
+                elif fsdp_config.sharding_strategy == "HYBRID_SHARD":
+                    shard_index = rank % fsdp_config.num_shard
+                    total_shards = fsdp_config.num_shard
+                else:
+                    raise NotImplementedError
+
+                optimizer_save_path = os.path.join(
+                    temp_path, f"optimizer.{shard_index:05d}-of-{total_shards:05d}.pt"
+                )
+
+                should_save = False
+                if fsdp_config.sharding_strategy == "FULL_SHARD":
+                    should_save = True
+                elif fsdp_config.sharding_strategy == "HYBRID_SHARD":
+                    should_save = rank < fsdp_config.num_shard
+
+                if should_save:
+                    opt_state = optimizer.state_dict()
+                    _save_with_retry(
+                        lambda: torch.save(opt_state, optimizer_save_path),
+                        optimizer_save_path,
+                        logger=logger
+                    )
+                    del opt_state
+
+            # Barrier after optimizer save
+            dist.barrier()
+
+            # Save scheduler and data_status (rank 0 only)
+            if rank == 0:
+                if scheduler is not None:
+                    scheduler_path = os.path.join(temp_path, "scheduler.pt")
+                    _save_with_retry(
+                        lambda: torch.save(scheduler.state_dict(), scheduler_path),
+                        scheduler_path,
+                        logger=logger
+                    )
+
+                if data_status is not None:
+                    data_status_path = os.path.join(temp_path, "data_status.pt")
+                    _save_with_retry(
+                        lambda: torch.save(data_status, data_status_path),
+                        data_status_path,
+                        logger=logger
+                    )
+
+            dist.barrier()
+
+            # Atomic rename: only if everything succeeded
+            if rank == 0:
+                if os.path.exists(save_path):
+                    # Remove old checkpoint if exists
+                    shutil.rmtree(save_path, ignore_errors=True)
+                os.rename(temp_path, save_path)
+                logger.info(f"Checkpoint saved successfully to {save_path}.")
+
+            dist.barrier()
+            return
+
+        except Exception as e:
+            logger.error(f"Failed to save checkpoint at step {train_steps}: {e}")
+            # Cleanup temp directory on failure
+            if rank == 0 and os.path.exists(temp_path):
+                shutil.rmtree(temp_path, ignore_errors=True)
+                logger.info(f"Cleaned up incomplete checkpoint at {temp_path}")
+            dist.barrier()
+            # Re-raise to let training loop handle it (could continue training)
+            raise
+
+    @staticmethod
+    def fsdp_save_fsdp_ckpt(
+        ckpt_dir,
+        train_steps,
+        model,
+        ema_model,
+        optimizer,
+        scheduler,
+        data_status,
+        logger,
+        fsdp_config,
+    ):
+        """
+        Save checkpoint using SHARDED_STATE_DICT to avoid OOM.
+        Each GPU saves its own shard, no need to gather all weights to rank 0.
+        Reference: https://github.com/ByteDance-Seed/Bagel/issues/139
+        """
+        save_path = os.path.join(ckpt_dir, f"{train_steps:07d}")
+        temp_path = save_path + ".tmp"
+        rank = dist.get_rank()
+
+        try:
+            # Create temp directory
+            if rank == 0:
+                if os.path.exists(temp_path):
+                    shutil.rmtree(temp_path, ignore_errors=True)
+                os.makedirs(temp_path, exist_ok=True)
+            dist.barrier()
+
+            # Ensure temp_path is visible to all ranks
+            os.makedirs(temp_path, exist_ok=True)
+
+            logger.info(f"Saving sharded checkpoint to {save_path} (using temp: {temp_path}).")
+
+            # Clear GPU cache before saving
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
+            # Save EMA model using SHARDED_STATE_DICT
+            if ema_model is not None:
+                with FSDP.state_dict_type(
+                    ema_model,
+                    StateDictType.SHARDED_STATE_DICT,
+                    ShardedStateDictConfig(offload_to_cpu=True),
+                ):
+                    ema_state_dict = ema_model.state_dict()
+                    ema_save_dir = os.path.join(temp_path, "ema")
+                    ema_writer = FileSystemWriter(ema_save_dir)
+                    save_state_dict(ema_state_dict, ema_writer)
+                    del ema_state_dict
+                gc.collect()
+                torch.cuda.empty_cache()
+                if rank == 0:
+                    logger.info(f"EMA model saved to {ema_save_dir}")
+
+            dist.barrier()
+
+            # Save model using SHARDED_STATE_DICT
+            with FSDP.state_dict_type(
+                model,
+                StateDictType.SHARDED_STATE_DICT,
+                ShardedStateDictConfig(offload_to_cpu=True),
+            ):
+                model_state_dict = model.state_dict()
+                model_save_dir = os.path.join(temp_path, "model")
+                model_writer = FileSystemWriter(model_save_dir)
+                save_state_dict(model_state_dict, model_writer)
+                del model_state_dict
+            gc.collect()
+            torch.cuda.empty_cache()
+            if rank == 0:
+                logger.info(f"Model saved to {model_save_dir}")
+
+            dist.barrier()
+
+            # Save optimizer shards (same as before)
+            with FSDP.state_dict_type(model, StateDictType.LOCAL_STATE_DICT):
+                if fsdp_config.sharding_strategy == "FULL_SHARD":
+                    shard_index = rank
+                    total_shards = dist.get_world_size()
+                elif fsdp_config.sharding_strategy == "HYBRID_SHARD":
+                    shard_index = rank % fsdp_config.num_shard
+                    total_shards = fsdp_config.num_shard
+                else:
+                    raise NotImplementedError
+
+                optimizer_save_path = os.path.join(
+                    temp_path, f"optimizer.{shard_index:05d}-of-{total_shards:05d}.pt"
+                )
+
+                should_save = False
+                if fsdp_config.sharding_strategy == "FULL_SHARD":
+                    should_save = True
+                elif fsdp_config.sharding_strategy == "HYBRID_SHARD":
+                    should_save = rank < fsdp_config.num_shard
+
+                if should_save:
+                    opt_state = optimizer.state_dict()
+                    _save_with_retry(
+                        lambda: torch.save(opt_state, optimizer_save_path),
+                        optimizer_save_path,
+                        logger=logger
+                    )
+                    del opt_state
+
+            dist.barrier()
+
+            # Save scheduler (rank 0 only)
+            if rank == 0:
+                if scheduler is not None:
+                    scheduler_path = os.path.join(temp_path, "scheduler.pt")
+                    _save_with_retry(
+                        lambda: torch.save(scheduler.state_dict(), scheduler_path),
+                        scheduler_path,
+                        logger=logger
+                    )
+
+            # Save data_status per rank
+            if data_status is not None:
+                data_status_dir = os.path.join(temp_path, "data_status")
+                os.makedirs(data_status_dir, exist_ok=True)
+                data_status_path = os.path.join(data_status_dir, f"rank{rank:05d}.pt")
+                _save_with_retry(
+                    lambda: torch.save(data_status, data_status_path),
+                    data_status_path,
+                    logger=logger
+                )
+
+            dist.barrier()
+
+            # Atomic rename: only if everything succeeded
+            if rank == 0:
+                if os.path.exists(save_path):
+                    shutil.rmtree(save_path, ignore_errors=True)
+                os.rename(temp_path, save_path)
+                logger.info(f"Sharded checkpoint saved successfully to {save_path}.")
+
+            dist.barrier()
+            return
+
+        except Exception as e:
+            logger.error(f"Failed to save sharded checkpoint at step {train_steps}: {e}")
+            if rank == 0 and os.path.exists(temp_path):
+                shutil.rmtree(temp_path, ignore_errors=True)
+                logger.info(f"Cleaned up incomplete checkpoint at {temp_path}")
+            dist.barrier()
+            raise
+
+    @staticmethod
+    def try_load_fsdp_ckpt(resume_from, logger, model, ema_model=None, resume_from_ema=False):
+        """
+        Load checkpoint with support for both old (safetensors) and new (sharded) formats.
+
+        Old format: model.safetensors, ema.safetensors (single files)
+        New format: model/, ema/ directories with .distcp shards
+
+        IMPORTANT: For new format (sharded), model must already be wrapped in FSDP before calling this.
+        """
+        if resume_from is None or not os.path.exists(resume_from):
+            logger.info(f"No checkpoint found at {resume_from}, training from scratch.")
+            return model, ema_model
+
+        logger.info(f"Loading checkpoint from {resume_from}.")
+
+        # Detect format: check for model/ directory (new) vs model.safetensors (old)
+        model_dir = os.path.join(resume_from, "model")
+        model_safetensors = os.path.join(resume_from, "model.safetensors")
+        ema_dir = os.path.join(resume_from, "ema")
+        ema_safetensors = os.path.join(resume_from, "ema.safetensors")
+
+        is_sharded_format = os.path.isdir(model_dir)
+
+        if is_sharded_format:
+            # New sharded format - use FileSystemReader
+            logger.info(f"Detected sharded checkpoint format.")
+
+            # Determine which model to load
+            if resume_from_ema and os.path.isdir(ema_dir):
+                model_load_dir = ema_dir
+                logger.info(f"Loading model from EMA: {model_load_dir}")
             else:
-                raise NotImplementedError
+                model_load_dir = model_dir
+                logger.info(f"Loading model from: {model_load_dir}")
 
-            optimizer_save_path = os.path.join(
-                save_path, f"optimizer.{shard_index:05d}-of-{total_shards:05d}.pt"
-            )
-            if fsdp_config.sharding_strategy == "FULL_SHARD":
-                torch.save(optimizer.state_dict(), optimizer_save_path)
-            elif fsdp_config.sharding_strategy == "HYBRID_SHARD":
-                if dist.get_rank() < fsdp_config.num_shard:
-                    torch.save(optimizer.state_dict(), optimizer_save_path)
+            # Load model using SHARDED_STATE_DICT
+            with FSDP.state_dict_type(
+                model,
+                StateDictType.SHARDED_STATE_DICT,
+                ShardedStateDictConfig(offload_to_cpu=True),
+            ):
+                model_state_dict = model.state_dict()
+                model_reader = FileSystemReader(model_load_dir)
+                load_state_dict(model_state_dict, model_reader)
+                model.load_state_dict(model_state_dict, strict=False)
+                del model_state_dict
+            gc.collect()
+            torch.cuda.empty_cache()
+            logger.info(f"Model loaded from sharded checkpoint.")
+
+            # Load EMA model if provided
+            if ema_model is not None:
+                if os.path.isdir(ema_dir):
+                    ema_load_dir = ema_dir
+                else:
+                    # Fall back to model if ema doesn't exist
+                    logger.info(f"EMA directory not found, replicating from model.")
+                    ema_load_dir = model_load_dir
+
+                with FSDP.state_dict_type(
+                    ema_model,
+                    StateDictType.SHARDED_STATE_DICT,
+                    ShardedStateDictConfig(offload_to_cpu=True),
+                ):
+                    ema_state_dict = ema_model.state_dict()
+                    ema_reader = FileSystemReader(ema_load_dir)
+                    load_state_dict(ema_state_dict, ema_reader)
+                    ema_model.load_state_dict(ema_state_dict, strict=False)
+                    del ema_state_dict
+                gc.collect()
+                torch.cuda.empty_cache()
+                logger.info(f"EMA model loaded from sharded checkpoint.")
+
+        else:
+            # Old safetensors format - use load_file
+            logger.info(f"Detected safetensors checkpoint format.")
+
+            if resume_from_ema:
+                model_state_dict_path = ema_safetensors
             else:
-                raise NotImplementedError
+                model_state_dict_path = model_safetensors
 
-        if dist.get_rank() == 0 and scheduler is not None:
-            torch.save(scheduler.state_dict(), os.path.join(save_path, "scheduler.pt"))
+            model_state_dict = load_file(model_state_dict_path, device="cpu")
+            # NOTE position embeds are fixed sinusoidal embeddings, so we can just pop it off
+            model_state_dict.pop('latent_pos_embed.pos_embed', None)
+            model_state_dict.pop('vit_pos_embed.pos_embed', None)
+            msg = model.load_state_dict(model_state_dict, strict=False)
+            logger.info(msg)
+            del model_state_dict
 
-        if dist.get_rank() == 0 and data_status is not None:
-            torch.save(data_status, os.path.join(save_path, "data_status.pt"))
+            if ema_model is not None:
+                if not os.path.exists(ema_safetensors):
+                    logger.info(f"Replicating EMA model from {model_state_dict_path}.")
+                    ema_state_dict_path = model_state_dict_path
+                else:
+                    ema_state_dict_path = ema_safetensors
+                ema_state_dict = load_file(ema_state_dict_path, device="cpu")
+                ema_state_dict.pop('latent_pos_embed.pos_embed', None)
+                ema_state_dict.pop('vit_pos_embed.pos_embed', None)
+                msg = ema_model.load_state_dict(ema_state_dict, strict=False)
+                logger.info(msg)
+                del ema_state_dict
 
-        dist.barrier()
-        return
+        return model, ema_model
+
+    @staticmethod
+    def try_load_fsdp_train_state(resume_from, optimizer, scheduler, fsdp_config):
+        """
+        Load training state with support for both old and new checkpoint formats.
+        """
+        if resume_from is None or not os.path.exists(resume_from):
+            return optimizer, scheduler, 0, None
+
+        rank = dist.get_rank()
+
+        if fsdp_config.sharding_strategy == "FULL_SHARD":
+            shard_index = rank
+            total_shards = dist.get_world_size()
+        elif fsdp_config.sharding_strategy == "HYBRID_SHARD":
+            shard_index = rank % fsdp_config.num_shard
+            total_shards = fsdp_config.num_shard
+        else:
+            raise NotImplementedError
+
+        # Load optimizer
+        optimizer_state_dict_path = os.path.join(
+            resume_from, f"optimizer.{shard_index:05d}-of-{total_shards:05d}.pt"
+        )
+        optimizer_state_dict = torch.load(optimizer_state_dict_path, map_location="cpu", weights_only=True)
+        optimizer.load_state_dict(optimizer_state_dict)
+        del optimizer_state_dict
+
+        # Load scheduler
+        scheduler_state_dict_path = os.path.join(resume_from, "scheduler.pt")
+        scheduler_state_dict = torch.load(scheduler_state_dict_path, weights_only=True, map_location="cpu")
+        scheduler.load_state_dict(scheduler_state_dict)
+        del scheduler_state_dict
+
+        train_steps = int(os.path.basename(os.path.normpath(resume_from))) + 1
+
+        # Load data_status - check for new per-rank format first
+        data_status_dir = os.path.join(resume_from, "data_status")
+        data_status_path_new = os.path.join(data_status_dir, f"rank{rank:05d}.pt")
+        data_status_path_old = os.path.join(resume_from, "data_status.pt")
+
+        data_status = None
+        if os.path.exists(data_status_path_new):
+            # New format: per-rank data_status
+            data_status = torch.load(data_status_path_new, weights_only=True, map_location="cpu")
+        elif os.path.exists(data_status_path_old):
+            # Old format: single data_status.pt with list
+            data_status_list = torch.load(data_status_path_old, weights_only=True, map_location="cpu")
+            if rank < len(data_status_list):
+                data_status = data_status_list[rank]
+
+        return optimizer, scheduler, train_steps, data_status
 
     @staticmethod
     def try_load_ckpt(resume_from, logger, model, ema_model=None, resume_from_ema=False):

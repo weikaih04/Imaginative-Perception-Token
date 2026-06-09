@@ -24,12 +24,16 @@ DATASETS = [
     ("perspective_no_thought",    "weikaih/imaginative-perception-token-pet-no-thought",                   "pet"),
     ("perspective_textcot",       "weikaih/imaginative-perception-token-pet-textcot",                      "pet"),
     ("pet_answeronly",            "weikaih/imaginative-perception-token-pet-answeronly",                           "pet"),
+    # PT (Path Tracing) - already in training schema
+    ("path_tracing_with_sysprompt", "linjieli222/spatial-imaginative-token-pt-ipt",        "pt"),
+    ("path_tracing_textcot",        "linjieli222/spatial-imaginative-token-pt-textcot",    "pt"),
+    ("path_tracing_answeronly",     "linjieli222/spatial-imaginative-token-pt-answeronly", "pt"),
 ]
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", choices=["mvc", "pet", "all"], default="all")
+    parser.add_argument("--task", choices=["mvc", "pet", "pt", "all"], default="all")
     parser.add_argument("--names", nargs="*", default=None,
                         help="Specific local dataset names to download.")
     parser.add_argument("--data-root", default="data/training",

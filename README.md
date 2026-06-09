@@ -83,12 +83,26 @@ pip install -r requirements.txt
 All 8 paper training datasets (≈30 GB after JPEG optimization) are available in a single [HuggingFace collection](https://huggingface.co/collections/weikaih/imaginative-perception-token-data-6a15f80e0fcef43bd0c50aba):
 
 ```bash
-python scripts/download_spatial_datasets.py              # all 8 datasets (MVC + PET)
-python scripts/download_spatial_datasets.py --task mvc   # MVC only (4 datasets)
-python scripts/download_spatial_datasets.py --task pet   # PET only (4 datasets)
+python scripts/download_spatial_datasets.py              # all datasets (MVC + PET + PT)
+python scripts/download_spatial_datasets.py --task mvc   # MVC only
+python scripts/download_spatial_datasets.py --task pet   # PET only
+python scripts/download_spatial_datasets.py --task pt    # PT only
 ```
 
-Parquets land in `data/training/<dataset_name>/`; `data/dataset_info.py` already points there.
+Parquets land in `data/training/<dataset_name>/`.
+
+### 2.5 Prepare datasets for training
+
+The released HF datasets use a viewer-friendly raw schema. Convert them into the
+interleaved training format the dataloader expects (writes `chunk_*.parquet` +
+`parquet_info.json` in place):
+
+```bash
+python scripts/prepare_datasets.py             # all tasks
+python scripts/prepare_datasets.py --task mvc  # a single task (mvc / pet / pt)
+```
+
+`data/dataset_info.py` already points the training configs at these folders.
 
 ### 3. Train — 4 end-to-end variants per task, matching paper main results
 
@@ -98,6 +112,7 @@ All variants start from `BAGEL-7B-MoT` and train for 25,000 steps. The mixed var
 |---|---|---|---|---|
 | **MVC** | `train_mvc_no_thought.sh` | `train_mvc_textcot.sh` | `train_mvc_ipt.sh` | `train_mvc_mixed.sh` |
 | **PET** | `train_pet_no_thought.sh` | `train_pet_textcot.sh` | `train_pet_ipt.sh` | `train_pet_mixed.sh` |
+| **PT** | — | — | `train_pt_ipt.sh` | — |
 
 ```bash
 bash scripts/train_mvc_ipt.sh    # MVC with imaginative perception tokens
