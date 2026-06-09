@@ -20,7 +20,7 @@ Mahtab Bigverdi<sup>1,2*</sup> · Linjie Li<sup>1*</sup> · Weikai Huang<sup>1,2
   <img src="assets/overview.png" width="90%" alt="Imaginative Perception Token — tasks and data overview"/>
 </p>
 
-This repository extends the [ThinkMorph](https://github.com/ThinkMorph/ThinkMorph) codebase with training and evaluation for three spatial imagination tasks:
+This repository provides training and evaluation for three spatial imagination tasks:
 
 | Task | What's imagined | Question form |
 |------|-----------------|---------------|
@@ -73,8 +73,8 @@ Imaginative Perception Token  (weikaih/imaginative-perception-token-data)
 ```bash
 git clone https://github.com/weikaih04/Imaginative-Perception-Token.git
 cd Imaginative-Perception-Token
-conda create -n thinkmorph python=3.10 -y
-conda activate thinkmorph
+conda create -n ipt python=3.10 -y
+conda activate ipt
 pip install -r requirements.txt
 ```
 
